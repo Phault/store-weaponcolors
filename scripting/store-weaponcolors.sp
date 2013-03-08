@@ -136,7 +136,7 @@ public Store_ItemUseAction:OnEquip(client, itemId, bool:equipped)
 		
 		PrintToChat(client, "%s%t", STORE_PREFIX, "Equipped item", displayName);
 
-		Store_GetEquippedItemsByType(Store_GetClientAccountID(client), "weaponcolors", Store_GetClientLoadout(client), OnGetPlayerWeaponColor, client);
+		SetWeaponColors(client, name);
 
 		return Store_EquipItem;
 	}
@@ -174,27 +174,32 @@ public OnGetPlayerWeaponColor(ids[], count, any:client)
 		decl String:itemName[32];
 		Store_GetItemName(ids[index], itemName, sizeof(itemName));
 
-		new weaponcolor = -1;
+		SetWeaponColors(client, itemName);
+	}
+}
 
-		if (!GetTrieValue(g_colorNameIndex, itemName, weaponcolor))
-		{
-			PrintToChat(client, "%s%t", STORE_PREFIX, "No item attributes");
-			return;
-		}
+SetWeaponColors(client, String:itemName[])
+{
+	new weaponcolor = -1;
 
-		new color[4];
-		Array_Copy(g_colors[weaponcolor][Color], color, sizeof(color));
+	if (!GetTrieValue(g_colorNameIndex, itemName, weaponcolor))
+	{
+		PrintToChat(client, "%s%t", STORE_PREFIX, "No item attributes");
+		return;
+	}
 
-		new ent = -1;
-		for(new i = 0; i <= 47; i++) { 
-	        ent = GetEntDataEnt2(client,weaponOffset + (i * 4)); 
+	new color[4];
+	Array_Copy(g_colors[weaponcolor][Color], color, sizeof(color));
 
-	        if(ent != -1)
-	        { 
-				SetEntityRenderColor(ent, color[0], color[1], color[2], color[3]);
-				SetEntityRenderMode(ent, RenderMode:1);
-	        } 
-    	} 
+	new ent = -1;
+	for(new i = 0; i <= 47; i++) { 
+        ent = GetEntDataEnt2(client,weaponOffset + (i * 4)); 
+
+        if(ent != -1)
+        { 
+			SetEntityRenderColor(ent, color[0], color[1], color[2], color[3]);
+			SetEntityRenderMode(ent, RenderMode:1);
+        } 
 	}
 }
 
