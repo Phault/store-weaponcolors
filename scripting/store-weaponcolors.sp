@@ -14,7 +14,7 @@ enum WeaponColor
 
 new weaponOffset;
 
-new g_colors[1024][WeaponColor];
+new g_colors[512][WeaponColor];
 new g_colorCount = 0;
 
 new Handle:g_colorNameIndex = INVALID_HANDLE;
