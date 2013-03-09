@@ -17,8 +17,6 @@ new weaponOffset;
 new g_colors[1024][WeaponColor];
 new g_colorCount = 0;
 
-new String:g_game[32];
-
 new Handle:g_colorNameIndex = INVALID_HANDLE;
 
 public Plugin:myinfo =
@@ -37,8 +35,6 @@ public OnPluginStart()
 {
 	LoadTranslations("common.phrases");
 	LoadTranslations("store.phrases");
-
-	GetGameFolderName(g_game, sizeof(g_game));
 
 	weaponOffset = FindSendPropInfo("CBasePlayer","m_hMyWeapons");
 
