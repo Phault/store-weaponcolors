@@ -19,6 +19,8 @@ new g_colorCount = 0;
 
 new Handle:g_colorNameIndex = INVALID_HANDLE;
 
+new String:g_game[32];
+
 public Plugin:myinfo =
 {
 	name        = "[Store] Weapon Colors",
@@ -38,8 +40,13 @@ public OnPluginStart()
 
 	weaponOffset = FindSendPropInfo("CBasePlayer","m_hMyWeapons");
 
+	GetGameFolderName(g_game, sizeof(g_game));
+
 	HookEvent("player_spawn", OnPlayerSpawn);
 	HookEvent("item_pickup", OnItemPickup);
+
+	if (StrEqual(g_game, "tf"))
+		HookEvent("post_inventory_application", OnPostInventoryApplication);
 
 	Store_RegisterItemType("weaponcolors", OnEquip, LoadItem);
 }
@@ -142,7 +149,8 @@ public Action:OnItemPickup(Handle:event, const String:name[], bool:dontBroadcast
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
 
-	Store_GetEquippedItemsByType(Store_GetClientAccountID(client), "weaponcolors", Store_GetClientLoadout(client), OnGetPlayerWeaponColor, client);
+	if (0<client<=GetMaxClients() && IsClientInGame(client))
+		Store_GetEquippedItemsByType(Store_GetClientAccountID(client), "weaponcolors", Store_GetClientLoadout(client), OnGetPlayerWeaponColor, client);
 	return Plugin_Continue;
 }
 
@@ -150,7 +158,17 @@ public Action:OnPlayerSpawn(Handle:event, const String:name[], bool:dontBroadcas
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
 
-	Store_GetEquippedItemsByType(Store_GetClientAccountID(client), "weaponcolors", Store_GetClientLoadout(client), OnGetPlayerWeaponColor, client);
+	if (0<client<=GetMaxClients() && IsClientInGame(client))
+		Store_GetEquippedItemsByType(Store_GetClientAccountID(client), "weaponcolors", Store_GetClientLoadout(client), OnGetPlayerWeaponColor, client);
+	return Plugin_Continue;
+}
+
+public Action:OnPostInventoryApplication(Handle:event, const String:name[], bool:dontBroadcast)
+{
+	new client = GetClientOfUserId(GetEventInt(event, "userid"));
+
+	if (0<client<=GetMaxClients() && IsClientInGame(client))
+		Store_GetEquippedItemsByType(Store_GetClientAccountID(client), "weaponcolors", Store_GetClientLoadout(client), OnGetPlayerWeaponColor, client);
 	return Plugin_Continue;
 }
 
