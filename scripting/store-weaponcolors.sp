@@ -9,10 +9,9 @@
 enum WeaponColor
 {
 	String:ColorName[STORE_MAX_NAME_LENGTH],
-	Color[4]
+	Color[4],
+	Slot
 }
-
-new weaponOffset;
 
 new g_colors[512][WeaponColor];
 new g_colorCount = 0;
@@ -37,8 +36,6 @@ public OnPluginStart()
 {
 	LoadTranslations("common.phrases");
 	LoadTranslations("store.phrases");
-
-	weaponOffset = FindSendPropInfo("CBasePlayer","m_hMyWeapons");
 
 	GetGameFolderName(g_game, sizeof(g_game));
 
@@ -97,6 +94,17 @@ public LoadItem(const String:itemName[], const String:attrs[])
 			g_colors[g_colorCount][Color][i] = json_array_get_int(color, i);
 
 		CloseHandle(color);
+	}
+
+	new Handle:slot = json_object_get(json, "slot");
+
+	if (slot == INVALID_HANDLE)
+	{
+		g_colors[g_colorCount][Slot] = -1;
+	}
+	else
+	{
+		g_colors[g_colorCount][Slot] = json_integer_value(slot);
 	}
 
 	CloseHandle(json);
@@ -206,14 +214,26 @@ SetWeaponColors(client, String:itemName[])
 	Array_Copy(g_colors[weaponcolor][Color], color, sizeof(color));
 
 	new ent = -1;
-	for(new i = 0; i <= 47; i++) { 
-        ent = GetEntDataEnt2(client,weaponOffset + (i * 4)); 
+	if (g_colors[weaponcolor][Slot] == -1)
+	{
+		for(new i = 0; i <= 10; i++) { 
+	        ent = GetPlayerWeaponSlot(client, i);
 
-        if(ent != -1)
-        { 
+	        if(ent != -1)
+	        { 
+				SetEntityRenderColor(ent, color[0], color[1], color[2], color[3]);
+				SetEntityRenderMode(ent, RenderMode:1);
+	        } 
+		}
+	}
+	else
+	{
+		ent = GetPlayerWeaponSlot(client, g_colors[weaponcolor][Slot]);
+		if(ent != -1)
+		{ 
 			SetEntityRenderColor(ent, color[0], color[1], color[2], color[3]);
 			SetEntityRenderMode(ent, RenderMode:1);
-        } 
+		}
 	}
 }
 
