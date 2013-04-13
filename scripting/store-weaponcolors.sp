@@ -162,7 +162,7 @@ public Action:OnItemPickup(Handle:event, const String:name[], bool:dontBroadcast
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
 
-	if (0<client<=GetMaxClients() && IsClientInGame(client))
+	if (0<client<=GetMaxClients() && IsClientInGame(client) && !IsFakeClient(client))
 		Store_GetEquippedItemsByType(Store_GetClientAccountID(client), "weaponcolors", Store_GetClientLoadout(client), OnGetPlayerWeaponColor, client);
 	return Plugin_Continue;
 }
@@ -171,7 +171,7 @@ public Action:OnPlayerSpawn(Handle:event, const String:name[], bool:dontBroadcas
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
 
-	if (0<client<=GetMaxClients() && IsClientInGame(client))
+	if (0<client<=GetMaxClients() && IsClientInGame(client) && !IsFakeClient(client))
 		Store_GetEquippedItemsByType(Store_GetClientAccountID(client), "weaponcolors", Store_GetClientLoadout(client), OnGetPlayerWeaponColor, client);
 	return Plugin_Continue;
 }
@@ -180,7 +180,7 @@ public Action:OnPostInventoryApplication(Handle:event, const String:name[], bool
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
 
-	if (0<client<=GetMaxClients() && IsClientInGame(client))
+	if (0<client<=GetMaxClients() && IsClientInGame(client) && !IsFakeClient(client))
 		Store_GetEquippedItemsByType(Store_GetClientAccountID(client), "weaponcolors", Store_GetClientLoadout(client), OnGetPlayerWeaponColor, client);
 	return Plugin_Continue;
 }
