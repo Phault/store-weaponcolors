@@ -4,7 +4,7 @@
 #include <sdktools>
 #include <sdkhooks>
 #include <store>
-#include <smjansson>
+#include <EasyJSON>
 
 #define MAX_WEAPON_SLOTS 10
 
@@ -27,7 +27,7 @@ public Plugin:myinfo =
 	name		= "[Store] Weapon Colors",
 	author	  = "Phault",
 	description = "Weapon Colors component for [Store]",
-	version	 = "1.1-alpha",
+	version	 = STORE_VERSION,
 	url		 = "https://github.com/Phault/store-weaponcolors"
 };
 
@@ -76,7 +76,7 @@ public LoadItem(const String:itemName[], const String:attrs[])
 		
 	SetTrieValue(g_colorNameIndex, g_colors[g_colorCount][ColorName], g_colorCount);
 	
-	new Handle:json = json_load(attrs);
+	new Handle:json = DecodeJSON(attrs);
 
 	if (json == INVALID_HANDLE)
 	{
@@ -84,32 +84,23 @@ public LoadItem(const String:itemName[], const String:attrs[])
 		return;
 	}
 
-	new Handle:color = json_object_get(json, "color");
+	new Handle:color = INVALID_HANDLE;
 
-	if (color == INVALID_HANDLE)
+	if (!JSONGetArray(json, "color", color) || color == INVALID_HANDLE)
 	{
-		g_colors[g_colorCount][Color] = {255, 255, 255, 255 };
+		g_colors[g_colorCount][Color] = {255, 255, 255, 255};
 	}
 	else
 	{
 		for (new i = 0; i < 4; i++)
-			g_colors[g_colorCount][Color][i] = json_array_get_int(color, i);
-
-		CloseHandle(color);
+			if (!JSONGetArrayInteger(color, i, g_colors[g_colorCount][Color][i]))
+				g_colors[g_colorCount][Color][i] = 255;
 	}
 
-	new Handle:slot = json_object_get(json, "slot");
-
-	if (slot == INVALID_HANDLE)
-	{
+	if (!JSONGetInteger(json, "slot", g_colors[g_colorCount][Slot]))
 		g_colors[g_colorCount][Slot] = -1;
-	}
-	else
-	{
-		g_colors[g_colorCount][Slot] = json_integer_value(slot);
-	}
 
-	CloseHandle(json);
+	DestroyJSON(json);
 	g_colorCount++;
 }
 
@@ -163,7 +154,7 @@ public Action:OnItemPickup(Handle:event, const String:name[], bool:dontBroadcast
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
 
 	if (0<client<=GetMaxClients() && IsClientInGame(client) && !IsFakeClient(client))
-		Store_GetEquippedItemsByType(Store_GetClientAccountID(client), "weaponcolors", Store_GetClientLoadout(client), OnGetPlayerWeaponColor, client);
+		Store_GetEquippedItemsByType(GetSteamAccountID(client), "weaponcolors", Store_GetClientLoadout(client), OnGetPlayerWeaponColor, client);
 	return Plugin_Continue;
 }
 
@@ -172,7 +163,7 @@ public Action:OnPlayerSpawn(Handle:event, const String:name[], bool:dontBroadcas
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
 
 	if (0<client<=GetMaxClients() && IsClientInGame(client) && !IsFakeClient(client))
-		Store_GetEquippedItemsByType(Store_GetClientAccountID(client), "weaponcolors", Store_GetClientLoadout(client), OnGetPlayerWeaponColor, client);
+		Store_GetEquippedItemsByType(GetSteamAccountID(client), "weaponcolors", Store_GetClientLoadout(client), OnGetPlayerWeaponColor, client);
 	return Plugin_Continue;
 }
 
@@ -181,7 +172,7 @@ public Action:OnPostInventoryApplication(Handle:event, const String:name[], bool
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
 
 	if (0<client<=GetMaxClients() && IsClientInGame(client) && !IsFakeClient(client))
-		Store_GetEquippedItemsByType(Store_GetClientAccountID(client), "weaponcolors", Store_GetClientLoadout(client), OnGetPlayerWeaponColor, client);
+		Store_GetEquippedItemsByType(GetSteamAccountID(client), "weaponcolors", Store_GetClientLoadout(client), OnGetPlayerWeaponColor, client);
 	return Plugin_Continue;
 }
 
@@ -211,7 +202,7 @@ RemoveWeaponColors(client)
 	for(new i = 0; i <= MAX_WEAPON_SLOTS; i++)
 	{
 		ent = GetPlayerWeaponSlot(client, i);
-		if(IsValidEntity(ent))
+		if(ent > 0 && IsValidEntity(ent))
 		{
 			SetEntityRenderMode(ent, RENDER_NORMAL);
 		}
