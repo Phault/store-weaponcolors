@@ -4,15 +4,16 @@
 #include <sdktools>
 #include <sdkhooks>
 #include <store>
-#include <smjansson>
+#include <EasyJSON>
+
+#define MAX_WEAPON_SLOTS 10
 
 enum WeaponColor
 {
 	String:ColorName[STORE_MAX_NAME_LENGTH],
-	Color[4]
+	Color[4],
+	Slot
 }
-
-new weaponOffset;
 
 new g_colors[512][WeaponColor];
 new g_colorCount = 0;
@@ -23,11 +24,11 @@ new String:g_game[32];
 
 public Plugin:myinfo =
 {
-	name        = "[Store] Weapon Colors",
-	author      = "Phault",
+	name		= "[Store] Weapon Colors",
+	author	  = "Phault",
 	description = "Weapon Colors component for [Store]",
-	version     = "1.1-alpha",
-	url         = "https://github.com/Phault/store-weaponcolors"
+	version	 = STORE_VERSION,
+	url		 = "https://github.com/Phault/store-weaponcolors"
 };
 
 /**
@@ -37,8 +38,6 @@ public OnPluginStart()
 {
 	LoadTranslations("common.phrases");
 	LoadTranslations("store.phrases");
-
-	weaponOffset = FindSendPropInfo("CBasePlayer","m_hMyWeapons");
 
 	GetGameFolderName(g_game, sizeof(g_game));
 
@@ -77,7 +76,7 @@ public LoadItem(const String:itemName[], const String:attrs[])
 		
 	SetTrieValue(g_colorNameIndex, g_colors[g_colorCount][ColorName], g_colorCount);
 	
-	new Handle:json = json_load(attrs);
+	new Handle:json = DecodeJSON(attrs);
 
 	if (json == INVALID_HANDLE)
 	{
@@ -85,21 +84,23 @@ public LoadItem(const String:itemName[], const String:attrs[])
 		return;
 	}
 
-	new Handle:color = json_object_get(json, "color");
+	new Handle:color = INVALID_HANDLE;
 
-	if (color == INVALID_HANDLE)
+	if (!JSONGetArray(json, "color", color) || color == INVALID_HANDLE)
 	{
-		g_colors[g_colorCount][Color] = { 255, 255, 255, 255 };
+		g_colors[g_colorCount][Color] = {255, 255, 255, 255};
 	}
 	else
 	{
 		for (new i = 0; i < 4; i++)
-			g_colors[g_colorCount][Color][i] = json_array_get_int(color, i);
-
-		CloseHandle(color);
+			if (!JSONGetArrayInteger(color, i, g_colors[g_colorCount][Color][i]))
+				g_colors[g_colorCount][Color][i] = 255;
 	}
 
-	CloseHandle(json);
+	if (!JSONGetInteger(json, "slot", g_colors[g_colorCount][Slot]))
+		g_colors[g_colorCount][Slot] = -1;
+
+	DestroyJSON(json);
 	g_colorCount++;
 }
 
@@ -118,6 +119,9 @@ public Store_ItemUseAction:OnEquip(client, itemId, bool:equipped)
 	
 	if (equipped)
 	{
+
+		RemoveWeaponColors(client);
+
 		decl String:displayName[STORE_MAX_DISPLAY_NAME_LENGTH];
 		Store_GetItemDisplayName(itemId, displayName, sizeof(displayName));
 		
@@ -133,13 +137,13 @@ public Store_ItemUseAction:OnEquip(client, itemId, bool:equipped)
 			PrintToChat(client, "%s%t", STORE_PREFIX, "No item attributes");
 			return Store_DoNothing;
 		}
-			
+
+		SetWeaponColors(client, name);
+		
 		decl String:displayName[STORE_MAX_DISPLAY_NAME_LENGTH];
 		Store_GetItemDisplayName(itemId, displayName, sizeof(displayName));
 		
 		PrintToChat(client, "%s%t", STORE_PREFIX, "Equipped item", displayName);
-
-		SetWeaponColors(client, name);
 
 		return Store_EquipItem;
 	}
@@ -149,8 +153,8 @@ public Action:OnItemPickup(Handle:event, const String:name[], bool:dontBroadcast
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
 
-	if (0<client<=GetMaxClients() && IsClientInGame(client))
-		Store_GetEquippedItemsByType(Store_GetClientAccountID(client), "weaponcolors", Store_GetClientLoadout(client), OnGetPlayerWeaponColor, client);
+	if (0<client<=GetMaxClients() && IsClientInGame(client) && !IsFakeClient(client))
+		Store_GetEquippedItemsByType(GetSteamAccountID(client), "weaponcolors", Store_GetClientLoadout(client), OnGetPlayerWeaponColor, client);
 	return Plugin_Continue;
 }
 
@@ -158,8 +162,8 @@ public Action:OnPlayerSpawn(Handle:event, const String:name[], bool:dontBroadcas
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
 
-	if (0<client<=GetMaxClients() && IsClientInGame(client))
-		Store_GetEquippedItemsByType(Store_GetClientAccountID(client), "weaponcolors", Store_GetClientLoadout(client), OnGetPlayerWeaponColor, client);
+	if (0<client<=GetMaxClients() && IsClientInGame(client) && !IsFakeClient(client))
+		Store_GetEquippedItemsByType(GetSteamAccountID(client), "weaponcolors", Store_GetClientLoadout(client), OnGetPlayerWeaponColor, client);
 	return Plugin_Continue;
 }
 
@@ -167,8 +171,8 @@ public Action:OnPostInventoryApplication(Handle:event, const String:name[], bool
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
 
-	if (0<client<=GetMaxClients() && IsClientInGame(client))
-		Store_GetEquippedItemsByType(Store_GetClientAccountID(client), "weaponcolors", Store_GetClientLoadout(client), OnGetPlayerWeaponColor, client);
+	if (0<client<=GetMaxClients() && IsClientInGame(client) && !IsFakeClient(client))
+		Store_GetEquippedItemsByType(GetSteamAccountID(client), "weaponcolors", Store_GetClientLoadout(client), OnGetPlayerWeaponColor, client);
 	return Plugin_Continue;
 }
 
@@ -192,6 +196,19 @@ public OnGetPlayerWeaponColor(ids[], count, any:client)
 	}
 }
 
+RemoveWeaponColors(client)
+{
+	new ent = -1;
+	for(new i = 0; i <= MAX_WEAPON_SLOTS; i++)
+	{
+		ent = GetPlayerWeaponSlot(client, i);
+		if(ent > 0 && IsValidEntity(ent))
+		{
+			SetEntityRenderMode(ent, RENDER_NORMAL);
+		}
+	}
+}
+
 SetWeaponColors(client, String:itemName[])
 {
 	new weaponcolor = -1;
@@ -202,33 +219,30 @@ SetWeaponColors(client, String:itemName[])
 		return;
 	}
 
-	new color[4];
-	Array_Copy(g_colors[weaponcolor][Color], color, sizeof(color));
-
 	new ent = -1;
-	for(new i = 0; i <= 47; i++) { 
-        ent = GetEntDataEnt2(client,weaponOffset + (i * 4)); 
-
-        if(ent != -1)
-        { 
-			SetEntityRenderColor(ent, color[0], color[1], color[2], color[3]);
-			SetEntityRenderMode(ent, RenderMode:1);
-        } 
+	if (g_colors[weaponcolor][Slot] == -1)
+	{
+		for(new i = 0; i <= MAX_WEAPON_SLOTS; i++)
+		{
+			ent = GetPlayerWeaponSlot(client, i);
+			if(IsValidEntity(ent))
+			{
+				SetEntColor(ent, g_colors[weaponcolor][Color]);
+			}
+		}
+	}
+	else
+	{
+		ent = GetPlayerWeaponSlot(client, g_colors[weaponcolor][Slot]);
+		if(IsValidEntity(ent))
+		{
+			SetEntColor(ent, g_colors[weaponcolor][Color]);
+		}
 	}
 }
 
-/**
- * Copies a 1 dimensional static array.
- *
- * @param array			Static Array to copy from.
- * @param newArray		New Array to copy to.
- * @param size			Size of the array (or number of cells to copy)
- * @noreturn
- */
-stock Array_Copy(const any:array[], any:newArray[], size)
+SetEntColor(ent, color[])
 {
-	for (new i=0; i < size; i++) 
-	{
-		newArray[i] = array[i];
-	}
+	SetEntityRenderMode(ent, RENDER_TRANSCOLOR);
+	SetEntityRenderColor(ent, color[0], color[1], color[2], color[3]);
 }
